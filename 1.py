@@ -15,18 +15,27 @@ class Death:
         else:
             return x
 
-    def age_and_desease(x):
+    def age_and_desease_year(x):
         return 0.98 * x
+
+    def age_and_desease_month(x):
+        return 599/600 * x
 
 bev = initial
 bev_hist = np.array([bev])
 
 for _ in range(time_steps):
-    bev = Death.food(bev)
-    if food - bev > 0:
-        bev = segs(bev)
-    bev = Death.age_and_desease(bev)
-    bev_hist = np.append(bev_hist, bev)
+    i = 1
+    for i < 13:
+        bev = Death.food(bev)
+        bev = Death.age_and_desease_month(bev)
+        if i in fertile_months:
+            pass
+        #gauss ueber die fertile months segs(bev) if food - bev > 0
+        else:
+            pass
+        i += 1
+        bev_hist = np.append(bev_hist, bev)
 
-plt.plot(range(time_steps + 1), bev_hist)
+plt.plot(range(time_steps * 12 + 1), bev_hist)
 plt.show()
