@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import numpy             as np
 import matplotlib.pyplot as plt
-from preset1 import *
-from lookup  import *
+from preset1      import *
+from lookup       import *
+from environment1 import *
 
 time_steps = 25 # years of simulation
 
@@ -10,7 +11,7 @@ def max_age():
     return 5/4 * age_death
 
 def segs(x, gauss_factor):
-    return (x + species_factor * n_birth * x / 2 * gauss_factor * (1 - x / food))
+    return (x + fertility * species_factor * n_birth * x / 2 * gauss_factor * (1 - x / food))
 
 class Death:
     def food(x):

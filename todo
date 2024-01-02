@@ -1,16 +1,17 @@
 geburten:
-    - food                                    🗸
-    - seasons (months and how often a year)   🗸
-    - number of offspring per birth           🗸
-    - probability of mating                   🗸
-    - reduced fertility due to environment
+    - food                                            🗸
+    - seasons (months and how often a year)           🗸
+    - number of offspring per birth                   🗸
+    - probability of mating                           🗸
+    - reduced fertility due to environment            🗸
 
 generell:
     - wasser/trinken (2 arten!)
+	- mehrere arten biomass (boden, buesche, baeume)
 
 tode:
-    - starving                                🗸
-    - accidents                               🗸
+    - starving                                        🗸
+    - accidents                                       🗸
     - environment (wetter hazards, radiation)
     - alter
     - krankheiten (verbreitung exp etc etf)
