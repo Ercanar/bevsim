@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-import numpy as np
+import numpy             as np
 import matplotlib.pyplot as plt
 from preset1 import *
+from lookup  import *
 
-time_steps = 25
+time_steps = 25 # years of simulation
 
-def segs(x):
-    return (x + n_birth * x / 2) * n_year
+def segs(x, gauss_factor):
+    return gauss_factor * (x + n_birth * x / 2) * n_year
 
 class Death:
     def food(x):
@@ -30,8 +31,9 @@ for _ in range(time_steps):
         bev = Death.food(bev)
         bev = Death.age_and_desease_month(bev)
         if i in fertile_months:
-            pass
-        #gauss ueber die fertile months segs(bev) if food - bev > 0
+            if food-bev > 0:
+                bev = segs(bev, g(len(fertile_months))[i - fertile_months[0]]#TODO:lookup gaussian factor??)
+                                ↑        this wont work, i know ...         ↑
         else:
             pass
         i += 1
