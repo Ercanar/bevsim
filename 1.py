@@ -6,38 +6,50 @@ from lookup  import *
 
 time_steps = 25 # years of simulation
 
+def max_age():
+    return 5/4 * age_death
+
 def segs(x, gauss_factor):
-    return gauss_factor * (x + n_birth * x / 2) * n_year
+    return (x + species_factor * n_birth * x / 2 * gauss_factor * (1 - x / food))
 
 class Death:
     def food(x):
         if food - x < 0:
-            return x - abs(food - x)
+            return x - 0.5 * abs(food - x)
         else:
             return x
 
-    def age_and_desease_year(x):
-        return 0.98 * x
+    def desease_month(x):
+        return 999/1000 * x
 
-    def age_and_desease_month(x):
-        return 599/600 * x
+    def age(x):
+        return x
 
 bev = initial
 bev_hist = np.array([bev])
+bev_distribution = initial_distribution
 
 for _ in range(time_steps):
-    i = 1
-    for i < 13:
+    for i in range(1, 13):
         bev = Death.food(bev)
-        bev = Death.age_and_desease_month(bev)
-        if i in fertile_months:
-            if food-bev > 0:
-                bev = segs(bev, g(len(fertile_months))[i - fertile_months[0]]#TODO:lookup gaussian factor??)
-                                ↑        this wont work, i know ...         ↑
+        bev = Death.desease_month(bev)
+        foo = next(filter(
+            lambda a: i in a[0],
+            zip(fertile_months, range(len(fertile_months)))
+        ), (0, 0))
+        if foo[0] == 0:
+            bev = bev
         else:
-            pass
-        i += 1
+            if food - bev > 0:
+                bev = segs(bev, gaussian_splits[len(foo[0])][i - foo[0][i - foo[0][0]]])
         bev_hist = np.append(bev_hist, bev)
 
-plt.plot(range(time_steps * 12 + 1), bev_hist)
+print(len(initial_distribution))
+print(max_age())
+exit(42)
+
+plt.plot(range(len(bev_hist)), bev_hist)
+plt.xlabel("time in months", fontsize = "xx-large")
+plt.ylabel("bev in #"      , fontsize = "xx-large")
+plt.grid()
 plt.show()
