@@ -5,14 +5,14 @@
         pkgs = import nixpkgs { inherit system; };
         python = pkgs.python311;
         pyenv = python.withPackages (ps: with ps; [
-          numpy
           matplotlib
+          numpy
+          scipy
         ]);
       in
       {
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            nodejs
             pyenv
             python311Packages.ipython
           ];

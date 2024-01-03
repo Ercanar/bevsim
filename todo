@@ -8,15 +8,15 @@ geburten:
 generell:
     - wasser/trinken (2 arten!)
 	- mehrere arten biomass (boden, buesche, baeume)
+	- better starvation, daily simulation
 
 tode:
     - starving                                        🗸
     - accidents                                       🗸
-    - environment (wetter hazards, radiation)
-    - alter
+    - environment                                     🗸
+    - alter                                           🗸
     - krankheiten (verbreitung exp etc etf)
     - katastrophen
-    - age
     - fressfeinde
     - revierkaempfe, kriege
     - infant mortality
