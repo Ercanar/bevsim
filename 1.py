@@ -38,7 +38,7 @@ class Death:
             return x
 
     def accidents_month(x):
-        return (999 - environment_deaths_promille)/1000 * np.array(x)
+        return (999 - environment_deaths)/1000 * np.array(x)
 
     def age(x):
         x = x[:max_age()]
@@ -66,6 +66,7 @@ for _ in range(time_steps):
         else:
             if food - sum(bev_distribution) > 0:
                 bev = segs(bev_distribution, gaussian_splits[len(foo[0])][i - foo[0][i - foo[0][0]]])
+        bev_distribution[0] = bev_distribution[0] * (1 - infant_mortality/1000)
         bev_hist = np.append(bev_hist, sum(bev_distribution))
     bev_distribution = np.insert(bev_distribution, 0, 0)
 
