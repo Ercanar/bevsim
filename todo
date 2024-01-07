@@ -6,9 +6,11 @@ geburten:
     - reduced fertility due to environment            🗸
 
 generell:
-    - wasser/trinken (2 arten!)
-	- mehrere arten biomass (boden, buesche, baeume)
-	- better starvation, daily simulation
+    - wasser/trinken (boden/tau und gewaesser)        in work
+	- mehrere arten biomass (boden, buesche, baeume)  in work
+	- better starvation, daily simulation (starvation counter(days) --> exp zunahme an deaths over time (logistic curve), abh von spezies)
+	- same daily shit for water
+	- daily abnahme + zunahme von plant matter (fuer uebergangszeiten relevant)
 
 tode:
     - starving                                        🗸
