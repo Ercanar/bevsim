@@ -16,7 +16,6 @@
             pyenv
             python311Packages.ipython
           ];
-          DISPLAY = ":0";
         };
       });
 }

@@ -1,4 +1,5 @@
 import numpy as np
+from myTypes import Biomass
 
 # gaussian split distribution ratios
 gaussian_splits = [
@@ -18,13 +19,14 @@ gaussian_splits = [
 ]
 
 # biotop types into three types of plant biomass (ground, bushes, treetops) per 1 km^3 per year in kg
-plant_biomass_calc = [
-        ("mischwald",     [500000 , 250000, 10000000]),
-        ("nadelwald",     [500000 , 250000, 20000000]),
-        ("laubwald",      [500000 , 250000, 15000000]),
-        ("wiese",         [1000000, 0     , 0       ]),
-        #("fluss",        [       ,       ,         ]),
-        #("strand",       [       ,       ,         ]),
-        #("sumpf",        [       ,       ,         ]),
-        #("gewaesser",    [       ,       ,         ]),
-]
+# TODO: real values
+plant_biomass_calc = {
+    "mischwald":     Biomass(  500_000, 250_000, 10_000_000),
+    "nadelwald":     Biomass(  500_000, 250_000, 20_000_000),
+    "laubwald":      Biomass(  500_000, 250_000, 15_000_000),
+    "wiese":         Biomass(1_000_000,       0,          0), # wert ist für trockenes weed
+    # "fluss":         Biomass(       ,       ,         ),
+    # "strand":        Biomass(       ,       ,         ),
+    # "sumpf":         Biomass(       ,       ,         ),
+    # "gewässer":      Biomass(       ,       ,         ),
+}
