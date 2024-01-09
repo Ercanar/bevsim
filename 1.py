@@ -65,8 +65,8 @@ class Death:
         else:
             return x
 
-    def accidents_month(x):
-        return (999 - environment_deaths) / 1000 * np.array(x)
+    def accidents(x):
+        return (1 - environment_deaths / 30 - 1/30) * np.array(x)
 
     def age(x):
         x = x[: max_age()]
@@ -74,8 +74,20 @@ class Death:
             x[-i] = x[-i] * logistic_splits(age_death / 2)[i]
         return x
 
+    def thirst(x, source):
+        if source == "implicit":
+            print("foo")
+            return x
+        elif water_storage - sum(x) * water_consumption < 0:
+            counter_after_deaths = sum(x) - (sum(x) * water_consumption - water_storage) / (
+                2 * water_consumption
+            )
+            return x - (sum(x) - counter_after_deaths) // len(x)
+        else:
+            return x
 
-# TODO funktion fuer simulation, inputs: array von liste an presets, available food,
+
+# TODO funktion fuer simulation, inputs: array von liste an presets, available food, etc
 
 bev = sum(initial_distribution)
 bev_hist = np.array([bev])
@@ -85,8 +97,9 @@ start = time()
 for _ in range(time_steps):
     bev_distribution = Death.age(bev_distribution)
     for i in range(1, 13):
-        bev_distribution = Death.food(bev_distribution, plant_masses.Ground) # TODO make preset food sources work
-        bev_distribution = Death.accidents_month(bev_distribution)
+        bev_distribution = Death.food(bev_distribution, plant_masses.Ground) # TODO make preset food sources work (nicht festgelegte sondern von preset datei); make daily
+        bev_distribution = Death.thirst(bev_distribution, water_sources) # TODO make daily
+        bev_distribution = Death.accidents(bev_distribution)
         foo = next(
             filter(
                 lambda a: i in a[0], zip(fertile_months, range(len(fertile_months)))
@@ -101,10 +114,11 @@ for _ in range(time_steps):
                     bev_distribution,
                     gaussian_splits[len(foo[0])][i - foo[0][i - foo[0][0]]],
                     plant_masses.Ground,
-                )  # TODO replace gaussian splits in lookup with actual maths...
-        bev_distribution[0] = bev_distribution[0] * (1 - infant_mortality / 1000)
-        bev_hist = np.append(bev_hist, sum(bev_distribution))
+                )  # TODO replace gaussian splits in lookup with actual maths...; also make daily
+        bev_hist = np.append(bev_hist, sum(bev_distribution)) # TODO make daily
+    bev_distribution[0] = bev_distribution[0] * (1 - infant_mortality / 1000)
     bev_distribution = np.insert(bev_distribution, 0, 0)
+
 print(f"Took {time() - start}s")
 
 plt.plot(range(len(bev_hist)), bev_hist)

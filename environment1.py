@@ -8,4 +8,5 @@ biotop_type_dist = {
 }  # contens of biotop with distribution
 plant_growth_months = [4, 5, 6, 7, 8, 9]  # months where biomass is replenished
 fertility = 1 - (0.001)  # fertility penalty for specific environments
-environment_deaths = 1  # death per 1000 people, maximum 999 for extinktion
+environment_deaths = 1  # death per 1000 people per month, maximum 999 for extinktion
+water_storage = 2000000 # reservoir of water in biotop in l (filled up by rain or river)
