@@ -12,5 +12,5 @@ food_consumption     = 15 # food consumption per capita per month in kg
 mass_food            = 4 # mass of specimen in kg for carnivore food calculation
 #starvation_time      = 3 # average days to starve
 water_consumption    = 30 # liters of water per month per capita in l
-water_sources        = "explicit" # implicit or explicit, ersteres ist im food/luft/tau etc enthalten, zweiteres muss extra gefunden werden (pfuetzen, seen, fluesse etc)
-#verdursten_time      = 3 # average days do verdurst
+water_sources        = "implicit" # implicit or explicit, ersteres ist im food/luft/tau etc enthalten, zweiteres muss extra gefunden werden (pfuetzen, seen, fluesse etc)
+verdursten_time      = 3 # average days do verdurst

@@ -8,8 +8,7 @@ from environment1 import *
 from time import time
 from myTypes import Biomass
 
-time_steps = 142  # years of simulation
-
+time_steps = 150 # years of simulation
 
 def herbivore_food(get):
     return sum([
@@ -53,6 +52,12 @@ def segs(x, gauss_factor, food):
     x[0] = x[0] + births
     return x
 
+def thirsty(x):
+    if water_storage < water_consumption * sum(x):
+        return True
+    else:
+        return False
+
 
 class Death:
     def food(x, food):
@@ -66,7 +71,7 @@ class Death:
             return x
 
     def accidents(x):
-        return (1 - environment_deaths / 30 - 1/30) * np.array(x)
+        return (1 - environment_deaths / 30000 - 1/30000) * np.array(x)
 
     def age(x):
         x = x[: max_age()]
@@ -74,15 +79,15 @@ class Death:
             x[-i] = x[-i] * logistic_splits(age_death / 2)[i]
         return x
 
-    def thirst(x, source):
+    def thirst(x, source, timer, t):
         if source == "implicit":
-            print("foo")
             return x
-        elif water_storage - sum(x) * water_consumption < 0:
-            counter_after_deaths = sum(x) - (sum(x) * water_consumption - water_storage) / (
-                2 * water_consumption
-            )
-            return x - (sum(x) - counter_after_deaths) // len(x)
+        elif t < 0:
+            if len(logistic_splits(timer)) >= -t:
+                deaths =  logistic_splits(timer)[-t-1] * (sum(x) * water_consumption - water_storage) / (water_consumption)
+            else:
+                deaths = (sum(x) * water_consumption - water_storage) / (water_consumption)
+            return x - deaths // len(x) - 1
         else:
             return x
 
@@ -92,20 +97,19 @@ class Death:
 bev = sum(initial_distribution)
 bev_hist = np.array([bev])
 bev_distribution = initial_distribution
+t = verdursten_time
 
 start = time()
-for _ in range(time_steps):
+for _ in range(time_steps): # yearly simulation
     bev_distribution = Death.age(bev_distribution)
-    for i in range(1, 13):
+    for i in range(1, 13): # monthly simulation
         bev_distribution = Death.food(bev_distribution, plant_masses.Ground) # TODO make preset food sources work (nicht festgelegte sondern von preset datei); make daily
-        bev_distribution = Death.thirst(bev_distribution, water_sources) # TODO make daily
-        bev_distribution = Death.accidents(bev_distribution)
         foo = next(
-            filter(
-                lambda a: i in a[0], zip(fertile_months, range(len(fertile_months)))
-            ),
-            (0, 0),
-        )
+                filter(
+                    lambda a: i in a[0], zip(fertile_months, range(len(fertile_months)))
+                ),
+                (0, 0),
+            )
         if foo[0] == 0:
             bev_distribution = bev_distribution
         else:
@@ -115,14 +119,21 @@ for _ in range(time_steps):
                     gaussian_splits[len(foo[0])][i - foo[0][i - foo[0][0]]],
                     plant_masses.Ground,
                 )  # TODO replace gaussian splits in lookup with actual maths...; also make daily
-        bev_hist = np.append(bev_hist, sum(bev_distribution)) # TODO make daily
+        for _ in range(1, 31): # daily simulation
+            if thirsty(bev_distribution) == True:
+                t -= 1
+            else:
+                t = verdursten_time
+            bev_distribution = Death.thirst(bev_distribution, water_sources, verdursten_time, t)
+            bev_distribution = Death.accidents(bev_distribution)
+            bev_hist = np.append(bev_hist, sum(bev_distribution))
     bev_distribution[0] = bev_distribution[0] * (1 - infant_mortality / 1000)
     bev_distribution = np.insert(bev_distribution, 0, 0)
 
 print(f"Took {time() - start}s")
 
 plt.plot(range(len(bev_hist)), bev_hist)
-plt.xlabel("time in months", fontsize="xx-large")
+plt.xlabel("time in days", fontsize="xx-large")
 plt.ylabel("bev in #", fontsize="xx-large")
 plt.grid()
 plt.show()
