@@ -120,21 +120,20 @@ for _ in range(time_steps): # yearly simulation
     for i in range(1, 13): # monthly simulation
         if i in plant_growth_months:
             plant_mass_sum = sum([plant_masses(s) for s in food_sources])
-        foo = next(
+        processed_fertile = next(
             filter(
                 lambda a: i in a[0], zip(fertile_months, range(len(fertile_months)))
             ),
             (0, 0),
         )
         for _ in range(1, 31): # daily simulation
-            if foo[0] == 0:
+            if processed_fertile[0] == 0:
                 bev_distribution = bev_distribution
             else:
                 if plant_mass_sum - sum(bev_distribution) * food_consumption > 0:
                     bev_distribution = segs(
                         bev_distribution,
-                        GaussianSplits(len(foo[0]))[i - foo[0][i - foo[0][0]]],
-                        # gaussian_splits(len(foo[0]))[i - foo[0][0]], # TODO replace gaussian lookup with actual maths
+                        GaussianSplits(len(processed_fertile[0]))[i - processed_fertile[0][i - processed_fertile[0][0]]],
                         plant_mass_sum,
                     )
             if thirsty(bev_distribution) == True:
