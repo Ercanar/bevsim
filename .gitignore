@@ -1,2 +1,3 @@
-__pycache__
+*.svg
 .direnv
+__pycache__
