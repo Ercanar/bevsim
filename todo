@@ -7,10 +7,11 @@ geburten:
 
 generell:
     - wasser/trinken (boden/tau und gewaesser)        🗸
-	- mehrere arten biomass (boden, buesche, baeume)  in work
-	- better starvation, daily simulation (starvation counter(days) --> exp zunahme an deaths over time (logistic curve), abh von spezies)
-	- same daily shit for water
-	- daily abnahme + zunahme von plant matter (fuer uebergangszeiten relevant)
+	- mehrere arten biomass (boden, buesche, baeume)  🗸
+	- better starvation, daily simulation             🗸
+	- same daily shit for water                       🗸
+	- daily abnahme + zunahme von plant matter        🗸
+	- make births daily                               in work
 
 tode:
     - starving                                        🗸
@@ -18,5 +19,5 @@ tode:
     - environment                                     🗸
     - alter                                           🗸
     - krankheiten (spezialfall von fressfeinden)
-    - fressfeinde
+    - fressfeinde                                     in work i guess
     - infant mortality                                🗸
