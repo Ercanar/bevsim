@@ -37,11 +37,11 @@ class Species:
     water_consumption : float            # liters of water per capita per day in l
     water_sources     : WaterSource      # see WaterSource for explanations
 
-class Biotope(Enum):
+class Biotope(Enum):  #     boden, büsche, treetops
     Mischwald = Biomass(  500_000, 250_000, 10_000_000)
     Nadelwald = Biomass(  500_000, 250_000, 20_000_000)
     Laubwald  = Biomass(  500_000, 250_000, 15_000_000)
-    Wiese     = Biomass(1_000_000,       0,          0) # wert ist für trockenes weed
+    Wiese     = Biomass(2_500_000,       0,          0)
 
 @dataclass
 class Environment:
@@ -53,62 +53,10 @@ class Environment:
     simulation_time      : int                  # simulation time in years
     water_storage        : float                # reservoir of water in biotop in l (filled up by rain or river)
 
-environment = Environment(
-    simulation_area      = 1,
-    biotope_type_dist    = {Biotope.Mischwald: 0.65, Biotope.Wiese: 0.35},
-    environment_deaths   = 1,
-    fertility            = 0.999,
-    plant_growth_months  = [3, 4, 5, 6, 7, 8, 9, 10],
-    simulation_time      = 64,
-    water_storage        = 1_000_000,
-)
-
-bunnies = Species(
-    age_death         = 12,
-    age_mature        = 1,
-    fertile_seasons   = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11]],
-    food_consumption  = 1.35,
-    food_sources      = set([BiomassType.Ground, BiomassType.Bushes]),
-    infant_mortality  = 300,
-    manual_dist       = {4: 300, 1: 20},
-    # mass_food         = 4.5,
-    n_birth           = 3,
-    segs_probability  = 0.999,
-    starvation_time   = 14,
-    verdursten_time   = 14, # TODO this is sus; requesting cleanup
-    water_consumption = 0,
-    water_sources     = WaterSource.Implicit,
-)
-
-@dataclass()
 class Utils:
     MAX_AGE_FACTOR = 5/4 # factor for maximum age, calculated by life expectancy
 
-    species: Species
-    environment: Environment
-
-    # initial age group sizes pre-simulation
-    initial_distribution: [float] = None # numpy
-
-    herbivore_food: Biomass = None # total available plant mass, divided in layers
-    species_food: int = None # total available food for specific species
-
-    def __post_init__(self):
-        self.initial_distribution = np.zeros(int(np.ceil(self.MAX_AGE_FACTOR * self.species.age_death)) + 1)
-        np.put(
-            self.initial_distribution,
-            list(self.species.manual_dist.keys()),
-            list(self.species.manual_dist.values()))
-
-        self.herbivore_food = Biomass(*map(sum, [[
-                biotope.value.__dict__[field] * factor * self.environment.simulation_area
-                for (biotope, factor) in self.environment.biotope_type_dist.items()
-            ] for field in Biomass.__dataclass_fields__]))
-
-        self.species_food = sum([
-            self.herbivore_food.__dict__[source.value]
-            for source in self.species.food_sources])
-
+    @staticmethod
     def gaussian_func(x):
         return (np.sqrt(2 * np.pi)) ** -1 * np.exp(-(x**2) / 2)
 
@@ -144,4 +92,96 @@ class Utils:
 
         return probs
 
-utils = Utils(bunnies, environment)
+    @staticmethod
+    def do_death(population, age_death, max_age):
+        population = population[: max_age]
+        splits = Utils.logistic_splits(age_death / 2)
+        for i in range(len(splits)):
+            population[-i] *= splits[i]
+
+@dataclass
+class Simulation:
+    environment: Environment
+    species:     Species
+
+    max_age:     int = None
+
+    population:  [int]   = None
+    food_layers: Biomass = None
+    total_food:  int     = None
+
+    def __post_init__(self):
+        self.max_age = int(np.ceil(Utils.MAX_AGE_FACTOR * self.species.age_death))
+
+        self.population = np.zeros(max_age + 1)
+        np.put(
+            self.population,
+            list(self.species.manual_dist.keys()),
+            list(self.species.manual_dist.values()))
+
+        self.food_layers = Biomass(*map(sum, [[
+                biotope.value.__dict__[field] * factor * self.environment.simulation_area
+                for (biotope, factor) in self.environment.biotope_type_dist.items()
+            ] for field in Biomass.__dataclass_fields__]))
+
+        self.total_food = sum([
+            self.food_layers.__dict__[source.value]
+            for source in self.species.food_sources])
+
+    def step_year(self):
+        for month in range(12):
+            self.step_month(month)
+
+        self.population[0] *= 1 - self.species.infant_mortality / 1000
+        self.population = np.insert(self.population, 0, 0)
+        Utils.do_death(self.population, self.species.age_death, self.max_age)
+
+    def step_month(self, month): # TODO
+        pass
+
+    def step_day(self): # TODO
+        pass
+
+    def segs(self, gauss_factor, food):
+        fertile = sum(self.population[self.species.age_mature:]) / 2
+        births = np.floor(
+            self.environment.fertility
+            * self.species.segs_probability
+            * self.species.n_birth
+            * fertile
+            * gauss_factor
+            * (1 - sum(self.population) * self.species.food_consumption / food)
+        )
+        return births / 30
+
+################################################################################
+
+environment = Environment(
+    simulation_area      = 1,
+    biotope_type_dist    = {Biotope.Mischwald: 0.65, Biotope.Wiese: 0.35},
+    environment_deaths   = 1,
+    fertility            = 0.999,
+    plant_growth_months  = [3, 4, 5, 6, 7, 8, 9, 10],
+    simulation_time      = 64,
+    water_storage        = 1_000_000,
+)
+
+bunnies = Species(
+    age_death         = 12,
+    age_mature        = 1,
+    fertile_seasons   = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11]],
+    food_consumption  = 1.35,
+    food_sources      = set([BiomassType.Ground, BiomassType.Bushes]),
+    infant_mortality  = 300,
+    manual_dist       = {4: 300, 1: 20},
+    # mass_food         = 4.5,
+    n_birth           = 3,
+    segs_probability  = 0.999,
+    starvation_time   = 14,
+    verdursten_time   = 14,
+    water_consumption = 0,
+    water_sources     = WaterSource.Implicit,
+)
+
+sim = Simulation(environment, bunnies)
+print(len(sim.population))

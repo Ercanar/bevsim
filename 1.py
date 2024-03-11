@@ -8,29 +8,6 @@ from environment1 import *
 from time import time
 from myTypes import *
 
-def herbivore_food(get):
-    return sum([
-        np.array(get(plant_biomass_calc[name]) * factor * biotop_area)
-        for (name, factor) in biotop_type_dist.items()])
-
-plant_masses = Biomass(*[
-    herbivore_food(lambda b: b.__dict__[field])
-    for field in Biomass.__dataclass_fields__.keys()])
-
-
-def segs(x, gauss_factor, food):
-    fertile = sum(x[age_mature:]) / 2
-    births = np.floor(
-        fertility
-        * species_factor
-        * n_birth
-        * fertile
-        * gauss_factor
-        * (1 - sum(x) * food_consumption / food)
-    )
-    x[0] = x[0] + births / 30
-    return x
-
 def thirsty(x): # andrew
     return water_storage < water_consumption * sum(x)
 
@@ -69,12 +46,6 @@ class Death:
 
     def accidents(x):
         return (1 - environment_deaths / 30000 - 1/30000) * np.array(x)
-
-    def age(x):
-        x = x[: max_age()]
-        for i in range(len(LogisticSplits(age_death / 2))):
-            x[-i] = x[-i] * LogisticSplits(age_death / 2)[i]
-        return x
 
     def thirst(x, source, timer, t1):
         if source == WaterSource.Implicit or t1 >= 0:
