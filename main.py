@@ -106,9 +106,11 @@ class Simulation:
 
     max_age:     int = None
 
-    population:  [int]   = None
-    food_layers: Biomass = None
-    total_food:  int     = None
+    population:      [int]   = None
+    population_hist: [[int]] = None
+    food_layers:     Biomass = None
+    total_food_init: int     = None
+    total_food_curr: int     = None
 
     def __post_init__(self):
         self.max_age = int(np.ceil(Utils.MAX_AGE_FACTOR * self.species.age_death))
@@ -124,25 +126,37 @@ class Simulation:
                 for (biotope, factor) in self.environment.biotope_type_dist.items()
             ] for field in Biomass.__dataclass_fields__]))
 
-        self.total_food = sum([
+        self.total_food_init = sum([
             self.food_layers.__dict__[source.value]
             for source in self.species.food_sources])
 
     def step_year(self):
-        for month in range(12):
-            self.step_month(month)
+        for month_0 in range(12):
+            self.step_month(month_0)
 
         self.population[0] *= 1 - self.species.infant_mortality / 1000
         self.population = np.insert(self.population, 0, 0)
         Utils.do_death(self.population, self.species.age_death, self.max_age)
 
-    def step_month(self, month): # TODO
-        pass
+    def step_month(self, month_0):
+        month = month_0 + 1
+        if month in self.environment.plant_growth_months:
+            self.total_food_curr = self.total_food_init
 
-    def step_day(self): # TODO
-        pass
+        current_fertile_season = next(filter(lambda s: month in s, self.species.fertile_seasons), None)
 
-    def segs(self, gauss_factor, food):
+        for _ in range(30):
+            self.step_day(month, current_fertile_season)
+
+    def step_day(self, month, current_fertile_season):
+        if current_fertile_season != None and \
+           self.total_food_curr - sum(self.population) * self.species.food_consumption > 0:
+            self.do_segs(
+                Utils.gaussian_splits(len(current_fertile_season)) \
+                [month - current_fertile_season[month - current_fertile_season[0]]])
+            assert sum(self.population) > 0
+
+    def do_segs(self, gauss_factor):
         fertile = sum(self.population[self.species.age_mature:]) / 2
         births = np.floor(
             self.environment.fertility
@@ -150,9 +164,9 @@ class Simulation:
             * self.species.n_birth
             * fertile
             * gauss_factor
-            * (1 - sum(self.population) * self.species.food_consumption / food)
-        )
-        return births / 30
+            * (1 - sum(self.population) * \
+               self.species.food_consumption / self.total_food_curr))
+        self.population[0] += births / 30
 
 ################################################################################
 

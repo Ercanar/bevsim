@@ -14,6 +14,7 @@ generell:
 	- make births daily                               🗸
 	- real gaussian splits                            🗸
 	- echte werte für biomass in lookup               🗸
+	- bevölkerungspyramide live update
 
 tode:
 	- starving                                        🗸

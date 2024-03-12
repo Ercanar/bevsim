@@ -66,32 +66,10 @@ bev_hist = np.array([bev])
 bev_distribution = initial_distribution
 t1 = verdursten_time
 t2 = starvation_time
-plant_mass_sum = sum([plant_masses(s) for s in food_sources])
-
 start = time()
 for _ in range(time_steps): # yearly simulation
-    bev_distribution = Death.age(bev_distribution)
     for i in range(1, 13): # monthly simulation
-        if i in plant_growth_months:
-            plant_mass_sum = sum([plant_masses(s) for s in food_sources])
-
-        processed_fertile = next(
-            filter(
-                lambda a: i in a[0], zip(fertile_months, range(len(fertile_months)))
-            ),
-            (0, 0),
-        )
-
         for _ in range(30): # daily simulation
-            if processed_fertile[0] != 0 and \
-               plant_mass_sum - sum(bev_distribution) * food_consumption > 0:
-                bev_distribution = segs(
-                    bev_distribution,
-                    GaussianSplits(len(processed_fertile[0]))[i - processed_fertile[0][i - processed_fertile[0][0]]],
-                    plant_mass_sum,
-                )
-                assert sum(bev_distribution) > 0
-
             if thirsty(bev_distribution):
                 t1 -= 1
             else:
@@ -118,8 +96,6 @@ for _ in range(time_steps): # yearly simulation
             assert sum(bev_distribution) > 0
 
             bev_hist = np.append(bev_hist, sum(bev_distribution))
-    bev_distribution[0] = bev_distribution[0] * (1 - infant_mortality / 1000)
-    bev_distribution = np.insert(bev_distribution, 0, 0)
 
 print(f"Took {time() - start}s")
 
