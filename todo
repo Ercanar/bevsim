@@ -15,6 +15,8 @@ generell:
 	- real gaussian splits                            🗸
 	- echte werte für biomass in lookup               🗸
 	- bevölkerungspyramide live update
+	- water storage current speichern/nicht konstant
+	- update histogramm monthly
 
 tode:
 	- starving                                        🗸
@@ -22,5 +24,8 @@ tode:
 	- environment                                     🗸
 	- alter                                           🗸
 	- krankheiten (spezialfall von fressfeinden)
+      - liste vo species die befallen werden koennen
+	  - uebertragung durch fressen von anderen
+	    species oder kontakt mit eigenen species
 	- fressfeinde                                     not in work i guess
 	- infant mortality                                🗸
