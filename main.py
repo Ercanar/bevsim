@@ -27,7 +27,7 @@ class Species:
     fertile_seasons   : [[int]]          # seasons (list of months) of segs (only one birth per season), cannot overlap
     food_consumption  : float            # food consumption per capita per day in kg
     food_sources      : set(BiomassType) # food sources; can be other species or plants, specified to layer
-    infant_mortality  : float            # promille of infants that die in first year
+    infant_mortality  : float            # infants that die in first year; 0 for None, 1 for all
     manual_dist       : dict[int, int]   # age -> group size mapping for initial population distribution
     # mass_food         : float            # mass of specimen in kg for carnivore food calculation
     n_birth           : int              # expected number of offspring per birth
@@ -46,7 +46,7 @@ class Biotope(Enum):  #     boden, büsche, treetops
 @dataclass
 class Environment:
     biotope_type_dist    : dict[Biotope, float] # distribution of kinds of vegetation biotopes; must add up to 1
-    environment_deaths   : float                # promille deaths per month; 999 for extinktion
+    environment_deaths   : float                # deaths per month; 0 for None, 1 for extinktion
     fertility            : float                # fertility after environment penalty is applied
     minimum_food         : int                  # minimum amount of food during winter
     plant_growth_months  : [int]                # months where plant biomass is replenished
@@ -179,7 +179,7 @@ class Simulation:
         for month_0 in range(Utils.MONTHS_IN_YEAR):
             self.step_month(month_0)
 
-        self.population[0] *= 1 - self.species.infant_mortality / 1000
+        self.population[0] *= 1 - self.species.infant_mortality
         self.population = np.insert(self.population, 0, 0)
         Utils.do_death(self.population, self.species.age_death, self.max_age)
 
@@ -272,14 +272,13 @@ class Simulation:
         self.population -= deaths // len(self.population) + 1
 
     def do_accidents(self):
-        # TODO konfigurierbare skala oder besser: env deaths als direkter faktor
-        self.population *= 1 - self.environment.environment_deaths / 30000 - 1 / 30000
+        self.population *= 1 - self.environment.environment_deaths / DAYS_IN_MONTH
 
 ################################################################################
 
 environment = Environment(
     biotope_type_dist    = {Biotope.Mischwald: 0.65, Biotope.Wiese: 0.35},
-    environment_deaths   = 1, # TODO fraction
+    environment_deaths   = 0.005,
     fertility            = 0.999,
     minimum_food         = 1000,
     plant_growth_months  = [3, 4, 5, 6, 7, 8, 9, 10],
@@ -294,7 +293,7 @@ bunnies = Species(
     fertile_seasons   = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11]],
     food_consumption  = 1.35,
     food_sources      = set([BiomassType.Ground, BiomassType.Bushes]),
-    infant_mortality  = 300, # TODO fraction
+    infant_mortality  = 0.3,
     manual_dist       = {4: 300, 1: 20},
     # mass_food         = 4.5,
     n_birth           = 3,
