@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from dataclasses  import dataclass, field
 from enum         import Enum
-from environment1 import *
 from functools    import cache
 from time         import time
 import matplotlib.pyplot as plt
@@ -243,7 +242,7 @@ class Simulation:
             * self.species.n_birth
             * fertile
             * gauss_factor
-            * (1 - self.psum() * self.species.food_consumption / self.total_food_curr))
+            * ((1 - self.psum() * self.species.food_consumption / self.total_food_curr)) ** 315)
         self.population[0] += births / 30
 
     def do_starve(self):
@@ -272,7 +271,7 @@ class Simulation:
         self.population -= deaths // len(self.population) + 1
 
     def do_accidents(self):
-        self.population *= 1 - self.environment.environment_deaths / DAYS_IN_MONTH
+        self.population *= 1 - self.environment.environment_deaths / Utils.DAYS_IN_MONTH
 
 ################################################################################
 
@@ -308,8 +307,8 @@ sim = Simulation(environment, bunnies)
 print("HERE GO HERE PLEASE =============================")
 sim.run()
 
-# plt.plot(range(len(sim.population_hist)), sim.population_hist)
-# plt.xlabel("time in days", fontsize="xx-large")
-# plt.ylabel("bev in #", fontsize="xx-large")
-# plt.grid()
-# plt.show()
+plt.plot(range(len(sim.population_hist)), sim.population_hist)
+plt.xlabel("time in days", fontsize="xx-large")
+plt.ylabel("bev in #", fontsize="xx-large")
+plt.grid()
+plt.show()
