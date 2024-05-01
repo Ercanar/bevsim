@@ -1,5 +1,8 @@
 {
-  outputs = { self, nixpkgs, flake-utils }:
+  inputs.lmaofit.url = "github:ercanar/pynixenv";
+  inputs.lmaofit.inputs.nixpkgs.follows = "nixpkgs";
+
+  outputs = { self, nixpkgs, flake-utils, lmaofit }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
@@ -15,6 +18,7 @@
         };
 
         pyenv = python.withPackages (ps: with ps; [
+          lmaofit.packages.${system}.default
           matplotlib
           numpy
           scipy

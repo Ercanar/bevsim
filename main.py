@@ -19,12 +19,24 @@ WaterSource = Enum("WaterSource", [
     "Explicit", # water needs to be sourced from environment
 ])
 
+plt.ion()
+plt.subplot(1, 2, 1)
+
+# stuff for direct pyplot GUI updating, because plt.pause is actually cringe
+_manager = plt.get_current_fig_manager()
+assert _manager != None
+_canvas = _manager.canvas
+
+def update_gui():
+    _canvas.flush_events()
+
 @dataclass
 class Species:
     age_death         : int              # life expectancy
     age_mature        : int              # age of seggsual maturity
     fertile_seasons   : [[int]]          # seasons (list of months) of segs (only one birth per season), cannot overlap
     food_consumption  : float            # food consumption per capita per day in kg
+    food_penalty      : int              # penalty in reproduction bc of low food
     food_sources      : set(BiomassType) # food sources; can be other species or plants, specified to layer
     infant_mortality  : float            # infants that die in first year; 0 for None, 1 for all
     manual_dist       : dict[int, int]   # age -> group size mapping for initial population distribution
@@ -66,6 +78,19 @@ class Utils:
         return x
 
     @staticmethod
+    @cache
+    def convert_probs(p_y):
+        if p_y == 0:
+            return 0
+
+        if p_y <= 0.75:
+            return 250 * p_y / (90000 - 49887 * p_y)
+        elif p_y >= 0.998:
+            return 0.05
+        else:
+            return np.exp( 20 / 721 * (500 * p_y - 663)) + 181 / 50000
+
+    @staticmethod
     def gaussian_func(x):
         return (np.sqrt(2 * np.pi)) ** -1 * np.exp(-(x**2) / 2)
 
@@ -103,10 +128,11 @@ class Utils:
 
     @staticmethod
     def do_death(population, age_death, max_age):
-        population = population[: max_age]
-        splits = Utils.logistic_splits(age_death / 2)
+        population = population[: max_age + 2]
+        splits = Utils.logistic_splits(age_death / 2 + 1)
         for i in range(len(splits)):
-            population[-i] *= splits[i]
+            population[int(i - 2/3*age_death)] *= 1 - Utils.convert_probs(splits[i])
+        return population # this would be unneccessary if Python wasn't stupid and a dogshit excuse of a language
 
 @dataclass
 class Simulation:
@@ -117,6 +143,7 @@ class Simulation:
     species:     Species
 
     max_age:     int = None
+    max_sim_age: int = 0
 
     population:      [int]   = None
     population_hist: [int]   = None
@@ -126,6 +153,8 @@ class Simulation:
 
     verdursten_time_curr: int = None
     starvation_time_curr: int = None
+
+    do_render: bool = True
 
     def __post_init__(self):
         self.max_age = int(np.ceil(Utils.MAX_AGE_FACTOR * self.species.age_death))
@@ -159,6 +188,7 @@ class Simulation:
         self.starvation_time_curr = self.species.starvation_time
 
     # TODO cache this but NOT @cache
+    # TODO enlargen brain to understand previous comment
     def psum(self):
         return np.sum(self.population)
 
@@ -166,23 +196,38 @@ class Simulation:
         start = time()
 
         try:
-            for _ in range(self.environment.simulation_time):
-                self.step_year()
+            for year_0 in range(self.environment.simulation_time):
+                self.step_year(year_0)
         except Simulation.AllDead:
             print("oopsie woopsie all entities are ded :3")
 
         stop = time()
         print(f"Took {stop - start}s")
 
-    def step_year(self):
+    def render(self, year_0, month):
+        plt.clf()
+
+        plt.subplot(2, 1, 1)
+        plt.title(f"cute bunnygirls - Y {year_0} M {month}", fontsize = "xx-large")
+        self.max_sim_age = max(max(self.population), self.max_sim_age)
+        plt.xlim(0, self.max_sim_age + 50)
+        plt.ylim(-1, self.max_age + 2)
+        plt.xlabel("population", fontsize = "xx-large")
+        plt.ylabel("age", fontsize = "xx-large")
+        plt.barh(range(len(self.population)), self.population)
+
+        plt.subplot(2, 1, 2)
+        plt.plot(range(len(self.population_hist)), self.population_hist)
+
+        update_gui()
+
+    def step_year(self, year_0):
         for month_0 in range(Utils.MONTHS_IN_YEAR):
-            self.step_month(month_0)
+            self.step_month(year_0, month_0)
 
-        self.population[0] *= 1 - self.species.infant_mortality
         self.population = np.insert(self.population, 0, 0)
-        Utils.do_death(self.population, self.species.age_death, self.max_age)
 
-    def step_month(self, month_0):
+    def step_month(self, year_0, month_0):
         month = month_0 + 1
         if month in self.environment.plant_growth_months:
             self.reset_food_curr()
@@ -192,8 +237,13 @@ class Simulation:
         for _ in range(Utils.DAYS_IN_MONTH):
             self.step_day(month, current_fertile_season)
 
+        if self.do_render:
+            self.render(year_0, month_0)
+
     def step_day(self, month, current_fertile_season):
         psum = self.psum()
+
+        self.population[0] *= 1 - Utils.convert_probs(self.species.infant_mortality)
 
         if current_fertile_season != None and \
            self.total_food_curr - psum * self.species.food_consumption > 0:
@@ -217,14 +267,14 @@ class Simulation:
         for f in \
         [ self.do_starve
         , self.do_thirst
-        , self.do_accidents ]:
+        , self.do_widespread_industrial_sabotage_uwu ]:
             old_psum = self.psum()
             f()
             psum = self.psum()
-            # print(f"{f.__name__}: {old_psum} - {psum} = {old_psum - psum}")
             assert psum >= 0
 
-        self.population_hist = np.append(self.population_hist, psum) # TODO check for optimizations
+        self.population_hist = np.append(self.population_hist, psum)
+        self.population = Utils.do_death(self.population, self.species.age_death, self.max_age)
         self.population = np.floor(self.population)
         if self.psum() == 0:
             raise Simulation.AllDead()
@@ -242,7 +292,7 @@ class Simulation:
             * self.species.n_birth
             * fertile
             * gauss_factor
-            * ((1 - self.psum() * self.species.food_consumption / self.total_food_curr)) ** 315)
+            * ((1 - self.psum() * self.species.food_consumption / self.total_food_curr)) ** self.species.food_penalty)
         self.population[0] += births / 30
 
     def do_starve(self):
@@ -270,7 +320,7 @@ class Simulation:
 
         self.population -= deaths // len(self.population) + 1
 
-    def do_accidents(self):
+    def do_widespread_industrial_sabotage_uwu(self):
         self.population *= 1 - self.environment.environment_deaths / Utils.DAYS_IN_MONTH
 
 ################################################################################
@@ -282,7 +332,7 @@ environment = Environment(
     minimum_food         = 1000,
     plant_growth_months  = [3, 4, 5, 6, 7, 8, 9, 10],
     simulation_area      = 1,
-    simulation_time      = 64,
+    simulation_time      = 2,
     water_storage        = 1_000_000,
 )
 
@@ -291,6 +341,7 @@ bunnies = Species(
     age_mature        = 1,
     fertile_seasons   = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11]],
     food_consumption  = 1.35,
+    food_penalty      = 500,
     food_sources      = set([BiomassType.Ground, BiomassType.Bushes]),
     infant_mortality  = 0.3,
     manual_dist       = {4: 300, 1: 20},
@@ -304,11 +355,10 @@ bunnies = Species(
 )
 
 sim = Simulation(environment, bunnies)
+# sim.do_render = False
 print("HERE GO HERE PLEASE =============================")
 sim.run()
-
-plt.plot(range(len(sim.population_hist)), sim.population_hist)
-plt.xlabel("time in days", fontsize="xx-large")
-plt.ylabel("bev in #", fontsize="xx-large")
-plt.grid()
+plt.ioff()
 plt.show()
+
+# we stay silly :3

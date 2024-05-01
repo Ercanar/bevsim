@@ -14,9 +14,8 @@ generell:
 	- make births daily                               🗸
 	- real gaussian splits                            🗸
 	- echte werte für biomass in lookup               🗸
-	- bevölkerungspyramide live update
+	- bevölkerungspyramide live update                🗸
 	- water storage current speichern/nicht konstant
-	- update histogramm monthly
 
 tode:
 	- starving                                        🗸
