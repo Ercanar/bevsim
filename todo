@@ -1,30 +1,31 @@
 geburten:
-	- food                                            🗸
-	- seasons (months and how often a year)           🗸
-	- number of offspring per birth                   🗸
-	- probability of mating                           🗸
-	- reduced fertility due to environment            🗸
+  - food                                            🗸
+  - seasons (months and how often a year)           🗸
+  - number of offspring per birth                   🗸
+  - probability of mating                           🗸
+  - reduced fertility due to environment            🗸
 
 generell:
-	- wasser/trinken (boden/tau und gewaesser)        🗸
-	- mehrere arten biomass (boden, buesche, baeume)  🗸
-	- better starvation, daily simulation             🗸
-	- same daily shit for water                       🗸
-	- daily abnahme + zunahme von plant matter        🗸
-	- make births daily                               🗸
-	- real gaussian splits                            🗸
-	- echte werte für biomass in lookup               🗸
-	- bevölkerungspyramide live update                🗸
-	- water storage current speichern/nicht konstant
+  - wasser/trinken (boden/tau und gewaesser)        🗸
+  - mehrere arten biomass (boden, buesche, baeume)  🗸
+  - better starvation, daily simulation             🗸
+  - same daily shit for water                       🗸
+  - daily abnahme + zunahme von plant matter        🗸
+  - make births daily                               🗸
+  - real gaussian splits                            🗸
+  - echte werte für biomass in lookup               🗸
+  - bevölkerungspyramide live update                🗸
+  - water storage current speichern/nicht konstant  🗸
+  - two herbivores, 6 feet apart cuz they not gay
 
 tode:
-	- starving                                        🗸
-	- accidents                                       🗸
-	- environment                                     🗸
-	- alter                                           🗸
-	- krankheiten (spezialfall von fressfeinden)
-      - liste vo species die befallen werden koennen
-	  - uebertragung durch fressen von anderen
-	    species oder kontakt mit eigenen species
-	- fressfeinde                                     not in work i guess
-	- infant mortality                                🗸
+  - starving                                        🗸
+  - accidents                                       🗸
+  - environment                                     🗸
+  - alter                                           🗸
+  - krankheiten (spezialfall von fressfeinden)
+    - liste vo species die befallen werden koennen
+    - uebertragung durch fressen von anderen
+      species oder kontakt mit eigenen species
+  - fressfeinde                                     not in work i guess
+  - infant mortality                                🗸

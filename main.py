@@ -2,6 +2,7 @@
 from dataclasses  import dataclass, field
 from enum         import Enum
 from functools    import cache
+from random       import random
 from time         import time
 import matplotlib.pyplot as plt
 import numpy             as np
@@ -36,7 +37,6 @@ class Species:
     age_mature        : int              # age of seggsual maturity
     fertile_seasons   : [[int]]          # seasons (list of months) of segs (only one birth per season), cannot overlap
     food_consumption  : float            # food consumption per capita per day in kg
-    food_penalty      : int              # penalty in reproduction bc of low food
     food_sources      : set(BiomassType) # food sources; can be other species or plants, specified to layer
     infant_mortality  : float            # infants that die in first year; 0 for None, 1 for all
     manual_dist       : dict[int, int]   # age -> group size mapping for initial population distribution
@@ -57,13 +57,14 @@ class Biotope(Enum):  #     boden, büsche, treetops
 @dataclass
 class Environment:
     biotope_type_dist    : dict[Biotope, float] # distribution of kinds of vegetation biotopes; must add up to 1
-    environment_deaths   : float                # deaths per month; 0 for None, 1 for extinktion
+    environment_deaths   : float                # deaths per year; 0 for None, 1 for extinktion
     fertility            : float                # fertility after environment penalty is applied
     minimum_food         : int                  # minimum amount of food during winter
-    plant_growth_months  : [int]                # months where plant biomass is replenished
+    plant_growth_months  : [int]                # months where plant biomass is replenished, must be continous
     simulation_area      : float                # area of simulation in km²
     simulation_time      : int                  # simulation time in years
     water_storage        : float                # reservoir of water in biotop in l (filled up by rain or river)
+    water_replenish      : float                # monthly fillup of water reservoir
 
 class Utils:
     MAX_AGE_FACTOR = 5/4 # factor for maximum age, calculated by life expectancy
@@ -108,7 +109,7 @@ class Utils:
         probs.insert(0, 0)
         probs = [(probs[i + 1] + probs[i]) / 2 for i in range(len(probs) - 1)]
         probs[-1] = 1
-        return probs
+        return np.array(probs)
 
     @staticmethod
     @cache
@@ -126,13 +127,29 @@ class Utils:
 
         return probs
 
+    def food_penalty(psum, food_consumption, total_food_curr, total_food_init, plant_growth_months, month):
+        until_next_pgm = (min(plant_growth_months) - 1 - month) % 12
+        available_food = total_food_curr + total_food_init * until_next_pgm
+        if until_next_pgm == 0:
+            z = total_food_curr
+        elif until_next_pgm >= 11:
+            z = available_food
+        else:
+            z = available_food / until_next_pgm
+        y = z - Utils.MONTHS_IN_YEAR * Utils.DAYS_IN_MONTH * food_consumption * psum
+        if y >= 0:
+            y = 0
+        return -y
+
     @staticmethod
     def do_death(population, age_death, max_age):
         population = population[: max_age + 2]
-        splits = Utils.logistic_splits(age_death / 2 + 1)
-        for i in range(len(splits)):
-            population[int(i - 2/3*age_death)] *= 1 - Utils.convert_probs(splits[i])
-        return population # this would be unneccessary if Python wasn't stupid and a dogshit excuse of a language
+        splits = Utils.logistic_splits(age_death / 2 + 2)
+        splits = 1 - (splits / len(splits)) ** 2
+        population = list(map(
+            lambda x, y: x * y, population,
+            [1] * (len(population) - len(splits)) + list(splits)))
+        return population
 
 @dataclass
 class Simulation:
@@ -145,11 +162,13 @@ class Simulation:
     max_age:     int = None
     max_sim_age: int = 0
 
-    population:      [int]   = None
-    population_hist: [int]   = None
-    food_layers:     Biomass = None
-    total_food_init: int     = None
-    total_food_curr: int     = None
+    population:       [int]   = None
+    population_hist:  [int]   = None
+    food_layers:      Biomass = None
+    total_food_init:  int     = None
+    total_food_curr:  int     = None
+    total_water_init: int     = None
+    total_water_curr: int     = None
 
     verdursten_time_curr: int = None
     starvation_time_curr: int = None
@@ -174,12 +193,18 @@ class Simulation:
             self.food_layers.__dict__[source.value]
             for source in self.species.food_sources])
 
+        self.total_water_init = self.environment.water_storage
+
         self.reset_food_curr()
+        self.reset_water_curr()
         self.reset_verdursten()
         self.reset_starvation()
 
     def reset_food_curr(self):
         self.total_food_curr = self.total_food_init
+
+    def reset_water_curr(self):
+        self.total_water_curr = self.total_water_init
 
     def reset_verdursten(self):
         self.verdursten_time_curr = self.species.verdursten_time
@@ -187,8 +212,6 @@ class Simulation:
     def reset_starvation(self):
         self.starvation_time_curr = self.species.starvation_time
 
-    # TODO cache this but NOT @cache
-    # TODO enlargen brain to understand previous comment
     def psum(self):
         return np.sum(self.population)
 
@@ -232,6 +255,11 @@ class Simulation:
         if month in self.environment.plant_growth_months:
             self.reset_food_curr()
 
+        if self.total_water_curr + self.environment.water_replenish < self.total_water_init:
+            self.total_water_curr += self.environment.water_replenish
+        else:
+            self.reset_water_curr()
+
         current_fertile_season = next(filter(lambda s: month in s, self.species.fertile_seasons), None)
 
         for _ in range(Utils.DAYS_IN_MONTH):
@@ -249,18 +277,19 @@ class Simulation:
            self.total_food_curr - psum * self.species.food_consumption > 0:
             self.do_segs(
                 Utils.gaussian_splits(len(current_fertile_season)) \
-                [month - current_fertile_season[month - current_fertile_season[0]]])
+                [current_fertile_season.index(month)],
+                month)
             assert psum >= 0
 
         # andrew
-        if self.environment.water_storage < self.species.water_consumption * psum:
+        if self.species.water_consumption * psum > self.environment.water_storage:
             self.verdursten_time_curr -= 1
         else:
             self.reset_verdursten()
 
         # ashley
-        if self.total_food_curr < self.species.food_consumption * psum:
-            self.starvation_time_curr -= 1
+        if self.species.food_consumption * psum > self.total_food_curr:
+            self.starvation_time_curr -=1
         else:
             self.reset_starvation()
 
@@ -275,7 +304,6 @@ class Simulation:
 
         self.population_hist = np.append(self.population_hist, psum)
         self.population = Utils.do_death(self.population, self.species.age_death, self.max_age)
-        self.population = np.floor(self.population)
         if self.psum() == 0:
             raise Simulation.AllDead()
 
@@ -284,7 +312,7 @@ class Simulation:
                 self.environment.minimum_food,
                 self.total_food_curr - consumption)
 
-    def do_segs(self, gauss_factor):
+    def do_segs(self, gauss_factor, month):
         fertile = np.sum(self.population[self.species.age_mature:]) / 2
         births = np.floor(
             self.environment.fertility
@@ -292,19 +320,28 @@ class Simulation:
             * self.species.n_birth
             * fertile
             * gauss_factor
-            * ((1 - self.psum() * self.species.food_consumption / self.total_food_curr)) ** self.species.food_penalty)
+            * (((1 - self.psum() * self.species.food_consumption / self.total_food_curr))
+                ** Utils.food_penalty(
+                    self.psum(),
+                    self.species.food_consumption,
+                    self.total_food_curr,
+                    self.total_food_init,
+                    self.environment.plant_growth_months,
+                    month)))
+        if births < 0.1 * self.psum(): # deviants
+            births += random() / 75 * fertile
         self.population[0] += births / 30
 
     def do_starve(self):
         if self.starvation_time_curr >= 0:
             return
-
+        print(self.starvation_time_curr)
         psum = self.psum()
-        starving_population = self.total_food_curr / self.species.food_consumption - psum
+        starving_population = (self.total_food_curr / self.species.food_consumption - psum) / len(self.population)
         self.population = np.vectorize(lambda g:
-            g + starving_population * g / psum * Utils.getd(
-                Utils.logistic_splits(self.species.starvation_time),
-                -self.starvation_time_curr - 1, 1))(self.population)
+            g + starving_population * Utils.getd(
+                0.5 * Utils.logistic_splits(self.species.starvation_time),
+                - self.starvation_time_curr, 0.5))(self.population)
 
     def do_thirst(self):
         if self.species.water_sources == WaterSource.Implicit \
@@ -321,7 +358,7 @@ class Simulation:
         self.population -= deaths // len(self.population) + 1
 
     def do_widespread_industrial_sabotage_uwu(self):
-        self.population *= 1 - self.environment.environment_deaths / Utils.DAYS_IN_MONTH
+        self.population = np.array(self.population) * (1 - Utils.convert_probs(self.environment.environment_deaths))
 
 ################################################################################
 
@@ -331,9 +368,10 @@ environment = Environment(
     fertility            = 0.999,
     minimum_food         = 1000,
     plant_growth_months  = [3, 4, 5, 6, 7, 8, 9, 10],
-    simulation_area      = 1,
-    simulation_time      = 2,
+    simulation_area      = 10,
+    simulation_time      = 64,
     water_storage        = 1_000_000,
+    water_replenish      = 100_000,
 )
 
 bunnies = Species(
@@ -341,10 +379,9 @@ bunnies = Species(
     age_mature        = 1,
     fertile_seasons   = [[2, 3], [4, 5], [6, 7], [8, 9], [10, 11]],
     food_consumption  = 1.35,
-    food_penalty      = 500,
     food_sources      = set([BiomassType.Ground, BiomassType.Bushes]),
     infant_mortality  = 0.3,
-    manual_dist       = {4: 300, 1: 20},
+    manual_dist       = {4: 200, 1: 120},
     # mass_food         = 4.5,
     n_birth           = 3,
     segs_probability  = 0.999,
@@ -358,6 +395,7 @@ sim = Simulation(environment, bunnies)
 # sim.do_render = False
 print("HERE GO HERE PLEASE =============================")
 sim.run()
+np.save("hist", sim.population_hist)
 plt.ioff()
 plt.show()
 
