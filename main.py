@@ -335,7 +335,6 @@ class Simulation:
     def do_starve(self):
         if self.starvation_time_curr >= 0:
             return
-        print(self.starvation_time_curr)
         psum = self.psum()
         starving_population = (self.total_food_curr / self.species.food_consumption - psum) / len(self.population)
         self.population = np.vectorize(lambda g:
@@ -369,7 +368,7 @@ environment = Environment(
     minimum_food         = 1000,
     plant_growth_months  = [3, 4, 5, 6, 7, 8, 9, 10],
     simulation_area      = 10,
-    simulation_time      = 64,
+    simulation_time      = 10,
     water_storage        = 1_000_000,
     water_replenish      = 100_000,
 )
@@ -391,11 +390,27 @@ bunnies = Species(
     water_sources     = WaterSource.Implicit,
 )
 
+deers = Species(
+    age_death         = 14,
+    age_mature        = 3,
+    fertile_seasons   = [[5, 6, 7]],
+    food_consumption  = 4,
+    food_sources      = set([BiomassType.Ground, BiomassType.Bushes]),
+    infant_mortality  = 0.25,
+    manual_dist       = {4: 200, 1: 120},
+    # mass_food         = 25,
+    n_birth           = 2,
+    segs_probability  = 0.9,
+    starvation_time   = 7,
+    verdursten_time   = 7,
+    water_consumption = 0,
+    water_sources     = WaterSource.Implicit,
+)
+
 sim = Simulation(environment, bunnies)
 # sim.do_render = False
 print("HERE GO HERE PLEASE =============================")
 sim.run()
-np.save("hist", sim.population_hist)
 plt.ioff()
 plt.show()
 
