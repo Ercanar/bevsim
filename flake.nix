@@ -18,6 +18,7 @@
         };
 
         pyenv = python.withPackages (ps: with ps; [
+          ipython
           lmaofit.packages.${system}.default
           matplotlib
           numpy
