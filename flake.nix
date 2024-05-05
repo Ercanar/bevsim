@@ -21,6 +21,7 @@
           ipython
           lmaofit.packages.${system}.default
           matplotlib
+          mypy
           numpy
           scipy
         ]);
