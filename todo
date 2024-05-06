@@ -16,7 +16,7 @@ generell:
   - echte werte für biomass in lookup               🗸
   - bevölkerungspyramide live update                🗸
   - water storage current speichern/nicht konstant  🗸
-  - two herbivores, 6 feet apart cuz they not gay
+  - two herbivores, 6 feet apart cuz they not gay   🗸
 
 tode:
   - starving                                        🗸
@@ -29,3 +29,6 @@ tode:
       species oder kontakt mit eigenen species
   - fressfeinde                                     not in work i guess
   - infant mortality                                🗸
+
+effizienz:
+  - dont use matplotlib bc its too slow…

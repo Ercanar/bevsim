@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from copy         import deepcopy
 from dataclasses  import dataclass, field
 from enum         import Enum
 from functools    import cache
@@ -32,15 +33,6 @@ WaterSource = Enum("WaterSource", [
 ])
 
 plt.ion()
-plt.subplot(1, 2, 1)
-
-# stuff for direct pyplot GUI updating, because plt.pause is actually cringe
-_manager = plt.get_current_fig_manager()
-assert _manager != None
-_canvas = _manager.canvas # type: ignore
-
-def update_gui() -> None:
-    _canvas.flush_events()
 
 def lazy(f: F) -> F:
     return lambda *args, **kwargs: lambda: f(*args, **kwargs)
@@ -65,14 +57,15 @@ class Species:
     water_sources     : WaterSource      # see WaterSource for explanations
 
     # late constants
-    max_age : int = 0 # life expectancy adjusted with MAX_AGE_FACTOR
+    max_age      : int = 0 # life expectancy adjusted with MAX_AGE_FACTOR
+    max_age_curr : int = 0
 
     # simulation state variables
 
     population      : Floats = field(default_factory = lambda: np.zeros(0))
     population_hist : Floats = field(default_factory = lambda: np.zeros(0))
 
-    total_food_init      : int   = 0
+    total_food_init      : float = 0
     verdursten_time_curr : float = 0
     starvation_time_curr : float = 0
 
@@ -97,7 +90,7 @@ class Species:
 
     def update_current_fertile_season(self, month: int) -> None:
         self.current_fertile_season = next(filter(
-            lambda s: month in s,
+            lambda s: month in s, # type: ignore
             self.fertile_seasons), None)
 
     def psum(self) -> float:
@@ -247,18 +240,18 @@ class Utils:
         plant_growth_months : list[int],
         month               : int
     ) -> float:
-        until_next_pgm = (min(plant_growth_months) - 1 - month) % 12
+        until_next_pgm = (min(plant_growth_months) - 1 - month) % Utils.MONTHS_IN_YEAR
         available_food = total_food_curr + total_food_init * until_next_pgm
         if until_next_pgm == 0:
             z = total_food_curr
-        elif until_next_pgm >= 11:
+        elif until_next_pgm >= 12: # prevent mass extinctin bcuz of horny winter uwu
             z = available_food
         else:
             z = available_food / until_next_pgm
         y = z - Utils.MONTHS_IN_YEAR * Utils.DAYS_IN_MONTH * food_consumption * psum
         if y >= 0:
             y = 0
-        return -y
+        return - y 
 
     @staticmethod
     def do_death(population: Floats, age_death: int, max_age: int) -> Floats:
@@ -278,6 +271,9 @@ class Simulation:
     environment: Environment
     species:     list[Species]
 
+    gui_top : list[Any] = field(default_factory = lambda: [])
+    gui_bot : Any       = None
+
     max_sim_age: int = 0
 
     food_layers_init : Biomass = field(default_factory = lambda: Biomass(0, 0, 0))
@@ -288,6 +284,10 @@ class Simulation:
     do_render: bool = True
 
     def __post_init__(self) -> None:
+        gui = plt.gcf().subfigures(2, 1)
+        self.gui_top = gui[0].subplots(1, len(self.species))
+        self.gui_bot = gui[1].subplots(1, 1)
+
         self.food_layers_init = Biomass(*map(sum, [[
                 biotope.value.__dict__[field] * factor * self.environment.simulation_area
                 for (biotope, factor) in self.environment.biotope_type_dist.items()
@@ -303,19 +303,19 @@ class Simulation:
         self.reset_water_curr()
 
     def reset_food_layers(self) -> None:
-        self.food_layers_curr = self.food_layers_init
+        self.food_layers_curr = deepcopy(self.food_layers_init)
 
     def reset_water_curr(self) -> None:
         self.total_water_curr = self.total_water_init
 
     # TODO potential performance hit
-    def food_groups_for_species(self, species: Species) -> list[int]:
-        return [
-            self.food_layers_curr.__dict__[source.value]
-            for source in species.food_sources]
+    def food_groups_for_species(self, species: Species) -> dict[BiomassType, float]:
+        return {
+            source: self.food_layers_curr.__dict__[source.value]
+            for source in species.food_sources}
 
-    def food_for_species(self, species: Species) -> int:
-        return sum(self.food_groups_for_species(species))
+    def food_for_species(self, species: Species) -> float:
+        return sum(cast(list[float], self.food_groups_for_species(species).values()))
 
     def run(self) -> None:
         start = time()
@@ -330,21 +330,32 @@ class Simulation:
         print(f"Took {stop - start}s")
 
     def render(self, year_0: int, month: int) -> None:
-        plt.clf()
+        self.gui_bot.clear()
 
-        # plt.subplot(2, 1, 1)
-        # plt.title(f"cute bunnygirls - Y {year_0} M {month}", fontsize = "xx-large")
-        # self.max_sim_age = max(max(self.population), self.max_sim_age)
-        # plt.xlim(0, self.max_sim_age + 50)
-        # plt.ylim(-1, self.species.max_age + 2)
-        # plt.xlabel("population", fontsize = "xx-large")
-        # plt.ylabel("age", fontsize = "xx-large")
-        # plt.barh(range(len(self.population)), self.population)
+        for (i, species) in enumerate(self.species):
+            fig = self.gui_top[i]
+            fig.clear()
+            species.max_age_curr = max(max(species.population), species.max_age_curr)
+            fig.set_title(f"{species.name} - Y {year_0} M {month}", fontsize = "xx-large")
+            fig.set_xlim(0, species.max_age_curr + 50)
+            fig.set_ylim(-1, species.max_age + 2)
+            fig.set_xlabel("population", fontsize = "xx-large")
+            fig.set_ylabel("age", fontsize = "xx-large")
+            fig.barh(range(len(species.population)), species.population)
 
-        # plt.subplot(2, 1, 2)
-        # plt.plot(range(len(self.population_hist)), self.population_hist)
+            fig = self.gui_bot
+            fig.set_title("total population", fontsize = "xx-large")
+            fig.set_xlabel("time in days", fontsize = "xx-large")
+            fig.set_ylabel("bev in #", fontsize = "xx-large")
+            fig.set_yscale("log")
+            fig.plot(
+                range(len(species.population_hist)),
+                species.population_hist,
+                label = species.name
+            )
 
-        update_gui()
+        plt.legend()
+        plt.pause(0.0000000001)
 
     def step_year(self, year_0: int) -> None:
         for month_0 in range(Utils.MONTHS_IN_YEAR):
@@ -373,6 +384,7 @@ class Simulation:
             self.render(year_0, month_0)
 
     def step_day(self, month: int) -> None:
+        # TODO erst updates berechnen und dann zusammen ausführen, um zu verhindern dass bunnies fressen und der rest hungert
         for species in self.species:
             psum = species.psum()
 
@@ -412,29 +424,27 @@ class Simulation:
             , species.do_widespread_industrial_sabotage_uwu(self.environment.environment_deaths) ]:
                 f()
                 psum = species.psum()
-                if psum < 0:
-                    print(species.name)
-                    print(self.food_layers_curr)
                 assert psum >= 0
 
             species.population_hist = np.append(species.population_hist, psum)
             species.population = Utils.do_death(species.population, species.age_death, species.max_age)
-            if species.psum() == 0:
-                raise Simulation.AllDead()
 
-            # 11 11.5 12
-            # 10 11   20
-            # -1 -0.5  8
-            food_consumption_per_source = food_consumption / len(species.food_sources)
+            # TODO only if EVERY species is ded
+            # if species.psum() == 0:
+            #     raise Simulation.AllDead()
+
             reduction = food_consumption / len(species.food_sources)
             groups = self.food_groups_for_species(species)
-            [(
-                tmp := g - reduction,
-                reduction := reduction + (0 if tmp >= 0 else -tmp/r),
-                0 if tmp < 0 else tmp)[-1]
-                for (g, r) in
-                zip(groups, range(len(groups) - 1, -1, -1))]
 
+            # "katzen hochgewürgte haarball kotze"
+            for (g, v) in { g: (
+                tmp := v - reduction,
+                reduction := reduction + (0 if tmp >= 0 else -tmp / r),
+                0 if tmp < 0 else tmp)[-1]
+              for ((g, v), r) in zip(
+                    groups.items(),
+                    list(range(len(groups) - 1, 0, -1)) + [1])}.items():
+                self.food_layers_curr.__dict__[g.value] = v
 
 ################################################################################
 
@@ -445,7 +455,7 @@ environment = Environment(
     minimum_food         = 1000,
     plant_growth_months  = [3, 4, 5, 6, 7, 8, 9, 10],
     simulation_area      = 10,
-    simulation_time      = 64,
+    simulation_time      = 10,
     water_storage        = 1_000_000,
     water_replenish      = 100_000,
 )
@@ -488,11 +498,31 @@ deers = Species(
     water_sources     = WaterSource.Implicit,
 )
 
-sim = Simulation(environment, [bunnies, deers]) # Rehehe
+cows = Species(
+    name = "cowgirls",
+
+    age_death         = 20,
+    age_mature        = 1,
+    fertile_seasons   = [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]],
+    food_consumption  = 60,
+    food_sources      = set([BiomassType.Ground]),
+    infant_mortality  = 0.3,
+    manual_dist       = {4: 50, 1: 10},
+    # mass_food         = 900,
+    n_birth           = 1,
+    segs_probability  = 0.9,
+    starvation_time   = 7,
+    verdursten_time   = 3,
+    water_consumption = 100,
+    water_sources     = WaterSource.Explicit,
+)
+
+sim = Simulation(environment, [bunnies, deers, cows]) # Rehehe
 # sim.do_render = False
 print("HERE GO HERE PLEASE =============================")
 sim.run()
-plt.ioff()
-plt.show() # type: ignore
+input("enter to stop")
+# plt.ioff()
+# plt.show() # type: ignore
 
 # we stay silly :3
